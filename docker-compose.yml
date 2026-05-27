@@ -1,0 +1,79 @@
+services:
+  mysql:
+    image: mysql:8.0
+    container_name: smartart_mysql
+    restart: always
+    environment:
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD:-rootpassword}
+      MYSQL_DATABASE: ${MYSQL_DATABASE:-smartart_db}
+      MYSQL_USER: ${MYSQL_USER:-smartart_user}
+      MYSQL_PASSWORD: ${MYSQL_PASSWORD:-smartart_pass}
+    volumes:
+      - mysql_data:/var/lib/mysql
+      - ./mysql/init.sql:/docker-entrypoint-initdb.d/init.sql
+    networks:
+      - smartart_network
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-u", "root", "-p${MYSQL_ROOT_PASSWORD:-rootpassword}"]
+      timeout: 20s
+      retries: 10
+      interval: 10s
+
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: smartart_backend
+    restart: always
+    environment:
+      - NODE_ENV=production
+      - DB_HOST=mysql
+      - DB_PORT=3306
+      - DB_NAME=${MYSQL_DATABASE:-smartart_db}
+      - DB_USER=${MYSQL_USER:-smartart_user}
+      - DB_PASSWORD=${MYSQL_PASSWORD:-smartart_pass}
+      - JWT_SECRET=${JWT_SECRET:-supersecretjwtkey2024smartart}
+      - JWT_EXPIRE=${JWT_EXPIRE:-7d}
+      - PORT=5000
+    volumes:
+      - ./uploads:/app/uploads
+    depends_on:
+      mysql:
+        condition: service_healthy
+    networks:
+      - smartart_network
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+      args:
+        - VITE_API_URL=/api
+    container_name: smartart_frontend
+    restart: always
+    networks:
+      - smartart_network
+
+  nginx:
+    build:
+      context: ./nginx
+      dockerfile: Dockerfile
+    container_name: smartart_nginx
+    restart: always
+    ports:
+      - "80:80"
+    depends_on:
+      - frontend
+      - backend
+    networks:
+      - smartart_network
+    volumes:
+      - ./uploads:/var/www/uploads
+
+volumes:
+  mysql_data:
+    driver: local
+
+networks:
+  smartart_network:
+    driver: bridge

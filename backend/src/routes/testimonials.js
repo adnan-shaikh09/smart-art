@@ -1,0 +1,10 @@
+const express = require('express');
+const router = express.Router();
+const { getAll, getAllAdmin, create, update, remove } = require('../controllers/testimonialsController');
+const { protect } = require('../middleware/auth');
+router.get('/', getAll);
+router.get('/admin/all', protect, getAllAdmin);
+router.post('/', protect, create);
+router.put('/:id', protect, update);
+router.delete('/:id', protect, remove);
+module.exports = router;

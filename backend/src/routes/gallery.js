@@ -1,0 +1,13 @@
+const express = require('express');
+const router = express.Router();
+const { getAll, getAllAdmin, create, update, remove, getCategories } = require('../controllers/galleryController');
+const { protect } = require('../middleware/auth');
+const { upload } = require('../middleware/upload');
+const setDir = (req, res, next) => { req.uploadSubDir = 'gallery'; next(); };
+router.get('/', getAll);
+router.get('/categories/list', getCategories);
+router.get('/admin/all', protect, getAllAdmin);
+router.post('/', protect, setDir, upload.single('image'), create);
+router.put('/:id', protect, setDir, upload.single('image'), update);
+router.delete('/:id', protect, remove);
+module.exports = router;

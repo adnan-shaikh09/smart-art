@@ -1,0 +1,12 @@
+const express = require('express');
+const router = express.Router();
+const { getAll, getOne, create, update, remove } = require('../controllers/servicesController');
+const { protect } = require('../middleware/auth');
+const { upload } = require('../middleware/upload');
+const setDir = (req, res, next) => { req.uploadSubDir = 'services'; next(); };
+router.get('/', getAll);
+router.get('/:id', getOne);
+router.post('/', protect, setDir, upload.single('image'), create);
+router.put('/:id', protect, setDir, upload.single('image'), update);
+router.delete('/:id', protect, remove);
+module.exports = router;
