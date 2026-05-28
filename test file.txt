@@ -1,1 +1,1 @@
-This is a test file to check codepush
+This is a test file to check code push
