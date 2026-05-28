@@ -1,1 +1,1 @@
-This is a test file to check code push
+This is a test file to check code push if .env is pushed along with changes
