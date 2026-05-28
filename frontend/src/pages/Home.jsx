@@ -10,26 +10,6 @@ const isVideoUrl = (url = '') => {
 
 
 
-// ── Speaker icons ──────────────────────────────────────────────
-const IcoMuted = () => (
-  <svg width="15" height="15" viewBox="0 0 24 24" fill="none"
-    stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-    <polygon points="11,5 6,9 2,9 2,15 6,15 11,19 11,5"/>
-    <line x1="23" y1="9" x2="17" y2="15"/><line x1="17" y1="9" x2="23" y2="15"/>
-  </svg>
-);
-const IcoSound = () => (
-  <svg width="15" height="15" viewBox="0 0 24 24" fill="none"
-    stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-    <polygon points="11,5 6,9 2,9 2,15 6,15 11,19 11,5"/>
-    <path d="M15.54 8.46a5 5 0 0 1 0 7.07"/>
-    <path d="M19.07 4.93a10 10 0 0 1 0 14.14"/>
-  </svg>
-);
-
-// ── HomeVideoCard ─────────────────────────────────────────────
-const HomeVideoCard = ({ item, index, activeVideoId, onActivate }) => {
-};
 const ParticlesBg = () => {
   const canvasRef = useRef(null);
   useEffect(() => {
@@ -131,16 +111,174 @@ const CATEGORY_COLORS = {
 };
 
 // ── Main Home component ────────────────────────────────────────
+
+// ═══════════════════════════════════════════════════════════
+//  HomeVideoCard — Portfolio Highlights video card
+// ═══════════════════════════════════════════════════════════
+const _IcoMuted = () => (
+  <svg width="14" height="14" viewBox="0 0 24 24" fill="none"
+    stroke="currentColor" strokeWidth="2" strokeLinecap="round">
+    <polygon points="11,5 6,9 2,9 2,15 6,15 11,19 11,5"/>
+    <line x1="23" y1="9" x2="17" y2="15"/>
+    <line x1="17" y1="9" x2="23" y2="15"/>
+  </svg>
+);
+const _IcoSound = () => (
+  <svg width="14" height="14" viewBox="0 0 24 24" fill="none"
+    stroke="currentColor" strokeWidth="2" strokeLinecap="round">
+    <polygon points="11,5 6,9 2,9 2,15 6,15 11,19 11,5"/>
+    <path d="M15.54 8.46a5 5 0 0 1 0 7.07"/>
+    <path d="M19.07 4.93a10 10 0 0 1 0 14.14"/>
+  </svg>
+);
+
+const HomeVideoCard = ({ item, index, activeVid, onActivate }) => {
+  const vidRef      = React.useRef(null);
+  const [muted,     setMuted]    = React.useState(true);
+  const [localPlay, setLocalPlay]= React.useState(false);
+  const isVid       = isVideoUrl(item.image_url || '');
+  const isActive    = activeVid === item.id;
+  const showPlay    = isVid && !localPlay && !isActive;
+
+  // Stop this video when another becomes active
+  React.useEffect(() => {
+    if (!isActive && localPlay) {
+      const v = vidRef.current;
+      if (v) { v.pause(); v.currentTime = 0; v.muted = true; }
+      setLocalPlay(false);
+      setMuted(true);
+    }
+  }, [isActive]);
+
+  // Desktop hover → play + unmute
+  const onEnter = () => {
+    if (window.innerWidth <= 900) return;
+    const v = vidRef.current;
+    if (!v) return;
+    v.muted = false; setMuted(false);
+    onActivate && onActivate(item.id, v);
+    v.play().then(() => setLocalPlay(true)).catch(() => {});
+  };
+
+  // Desktop hover leave → pause + re-mute
+  const onLeave = () => {
+    if (window.innerWidth <= 900) return;
+    const v = vidRef.current;
+    if (!v) return;
+    v.pause(); v.currentTime = 0; v.muted = true;
+    setMuted(true); setLocalPlay(false);
+    onActivate && onActivate(null, null);
+  };
+
+  // Mobile play button tap
+  const onPlayTap = (e) => {
+    e.stopPropagation();
+    if (window.innerWidth > 900) return;
+    const v = vidRef.current;
+    if (!v) return;
+    v.muted = false; setMuted(false);
+    setLocalPlay(true);
+    onActivate && onActivate(item.id, v);
+    v.play().catch(() => { setLocalPlay(false); });
+  };
+
+  // Tap on playing video (mobile) → stop
+  const onMediaTap = () => {
+    if (window.innerWidth > 900 || !localPlay) return;
+    const v = vidRef.current;
+    if (!v) return;
+    v.pause(); v.currentTime = 0; v.muted = true;
+    setMuted(true); setLocalPlay(false);
+    onActivate && onActivate(null, null);
+  };
+
+  // Speaker toggle
+  const onMuteToggle = (e) => {
+    e.stopPropagation();
+    const v = vidRef.current;
+    const nm = !muted; setMuted(nm);
+    if (v) {
+      v.muted = nm;
+      if (!nm && v.paused) {
+        onActivate && onActivate(item.id, v);
+        v.play().then(() => setLocalPlay(true)).catch(() => {});
+      }
+    }
+  };
+
+  return (
+    <div className="hgv-card" onMouseEnter={onEnter} onMouseLeave={onLeave}
+      style={{ animationDelay: (index * 0.08) + 's' }}>
+      <div className="hgv-media-wrap" onClick={onMediaTap}>
+        {item.image_url ? (
+          isVid ? (
+            <video ref={vidRef} src={item.image_url}
+              muted playsInline preload="metadata" loop
+              style={{ width:'100%', height:'auto', display:'block' }} />
+          ) : (
+            <img src={item.image_url} alt={item.title} loading="lazy"
+              style={{ width:'100%', height:'auto', display:'block' }} />
+          )
+        ) : (
+          <div className="hgv-placeholder">
+            <span style={{ fontSize:'2.5rem' }}>🎬</span>
+            <span style={{ fontSize:'0.82rem', fontFamily:'var(--font-heading)' }}>{item.title}</span>
+          </div>
+        )}
+
+        {/* Speaker button */}
+        {isVid && (
+          <button
+            className={'hgv-mute-btn ' + (muted ? 'is-muted' : 'is-sound')}
+            onClick={onMuteToggle}
+            title={muted ? 'Unmute' : 'Mute'}
+          >
+            {muted ? <_IcoMuted /> : <_IcoSound />}
+          </button>
+        )}
+
+        {/* Play button (shows when not playing) */}
+        {showPlay && (
+          <div className="hgv-play-btn"
+            onClick={window.innerWidth <= 900 ? onPlayTap : undefined}
+            style={{ cursor: window.innerWidth <= 900 ? 'pointer' : 'default',
+                     pointerEvents: window.innerWidth <= 900 ? 'auto' : 'none' }}>
+            <svg viewBox="0 0 24 24" fill="white" width="28" height="28">
+              <path d="M8 5v14l11-7z"/>
+            </svg>
+          </div>
+        )}
+
+        {/* Info overlay */}
+        <div className="hgv-overlay">
+          <span className="hgv-cat">{item.category}</span>
+          <h4 className="hgv-title">{item.title}</h4>
+          {item.description && <p className="hgv-desc">{item.description}</p>}
+        </div>
+
+        {item.is_featured && <div className="hgv-featured">⭐ Featured</div>}
+      </div>
+    </div>
+  );
+};
+// ═══════════════════════════════════════════════════════════
+
 const Home = () => {
   useScrollAnimation();
   const [services, setServices] = useState([]);
   const [gallery, setGallery] = useState([]);
+  const [activeVid, setActiveVid]   = React.useState(null);
+  const activeVidEl                 = React.useRef(null);
+  const handleActivate = React.useCallback((id, el) => {
+    if (activeVidEl.current && activeVidEl.current !== el) {
+      try { activeVidEl.current.pause(); activeVidEl.current.currentTime = 0; activeVidEl.current.muted = true; } catch(_){}
+    }
+    activeVidEl.current = el;
+    setActiveVid(id);
+  }, []);
   const [testimonials, setTestimonials] = useState([]);
   const [stats, setStats] = useState([]);
   const [testimonialIdx, setTestimonialIdx] = useState(0);
-
-  const [activeVideoId, setActiveVideoId] = useState(null);
-  const activeVidRef = useRef(null);
 
   useEffect(() => {
     document.title = 'Smart Art | Premier Signage Studio - Nashik';
@@ -294,7 +432,7 @@ const Home = () => {
             {/* Responsive video grid — items resize to natural video dimensions */}
             <div className="hgv-grid">
               {gallery.map((item, i) => (
-                <HomeVideoCard key={item.id} item={item} index={i} activeVideoId={activeVideoId} onActivate={handleActivateVideo} />
+                <HomeVideoCard key={item.id} item={item} index={i} activeVid={activeVid} onActivate={handleActivate} />
               ))}
             </div>
 
@@ -1190,6 +1328,28 @@ const Home = () => {
         }
         @media (max-width: 1024px) { .hgv-grid { grid-template-columns: repeat(2, 1fr); } }
         @media (max-width: 640px)  { .hgv-grid { grid-template-columns: 1fr; gap: 12px; } }
+
+        .hgv-grid { display:grid; grid-template-columns:repeat(3,1fr); gap:16px; align-items:start; }
+        .hgv-card { border-radius:10px; overflow:hidden; cursor:pointer; border:1px solid var(--border-subtle); background:var(--bg-card); transition:border-color .3s,transform .25s,box-shadow .3s; animation:fadeInUp .5s ease both; }
+        .hgv-card:hover { border-color:var(--border-gold); transform:translateY(-3px); box-shadow:var(--shadow-gold); }
+        .hgv-media-wrap { position:relative; width:100%; overflow:hidden; }
+        .hgv-media-wrap video, .hgv-media-wrap img { width:100%; height:auto; display:block; transition:transform .35s ease; }
+        .hgv-card:hover .hgv-media-wrap video, .hgv-card:hover .hgv-media-wrap img { transform:scale(1.03); }
+        .hgv-placeholder { width:100%; aspect-ratio:16/9; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:8px; background:var(--bg-card-hover); color:var(--text-muted); }
+        .hgv-mute-btn { position:absolute; top:8px; right:8px; width:30px; height:30px; border-radius:50%; border:1px solid rgba(255,255,255,.25); display:flex; align-items:center; justify-content:center; cursor:pointer; z-index:20; transition:all .2s; backdrop-filter:blur(6px); }
+        .hgv-mute-btn.is-muted { background:rgba(0,0,0,.6); color:rgba(255,255,255,.75); }
+        .hgv-mute-btn.is-sound { background:rgba(245,166,35,.88); border-color:var(--gold); color:#000; box-shadow:0 0 10px rgba(245,166,35,.55); }
+        .hgv-mute-btn:hover { transform:scale(1.15); background:var(--gold); border-color:var(--gold); color:#000; }
+        .hgv-play-btn { position:absolute; top:50%; left:50%; transform:translate(-50%,-50%); width:52px; height:52px; border-radius:50%; background:rgba(245,166,35,.85); display:flex; align-items:center; justify-content:center; transition:all .22s; box-shadow:0 4px 18px rgba(245,166,35,.5); }
+        .hgv-card:hover .hgv-play-btn { transform:translate(-50%,-50%) scale(1.1); }
+        .hgv-overlay { position:absolute; bottom:0; left:0; right:0; background:linear-gradient(to top,rgba(0,0,0,.88) 0%,transparent 100%); padding:14px 12px 10px; opacity:0; transform:translateY(6px); transition:opacity .28s,transform .28s; }
+        .hgv-card:hover .hgv-overlay { opacity:1; transform:translateY(0); }
+        .hgv-cat { display:inline-block; font-size:.63rem; padding:2px 8px; border-radius:100px; background:rgba(245,166,35,.88); color:#000; font-family:var(--font-heading); font-weight:700; margin-bottom:4px; text-transform:capitalize; }
+        .hgv-title { font-family:var(--font-heading); font-size:.85rem; font-weight:700; color:#fff; margin:0 0 2px; }
+        .hgv-desc { font-size:.72rem; color:rgba(255,255,255,.62); margin:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+        .hgv-featured { position:absolute; top:8px; left:8px; background:rgba(245,166,35,.9); color:#000; font-size:.62rem; font-weight:700; padding:2px 8px; border-radius:100px; font-family:var(--font-heading); pointer-events:none; }
+        @media(max-width:1024px){.hgv-grid{grid-template-columns:repeat(2,1fr);}}
+        @media(max-width:640px){.hgv-grid{grid-template-columns:1fr;gap:12px;}}
 `}</style>
     </div>
   );
